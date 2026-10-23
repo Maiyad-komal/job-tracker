@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Placement Portal</title>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        #resumeMessage {
+            display: block;
+            min-height: 24px;
+            margin-top: 12px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+<body>
+    <header class="dashboard-header">
+        <div>
+            <h1>Student Placement Portal</h1>
+            <p>Welcome, <span id="studentName">Student</span>!</p>
+        </div>
+        <button id="logoutButton" type="button">Logout</button>
+    </header>
+
+    <main class="dashboard-container">
+        <h2>My Dashboard</h2>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <h3>Available Jobs</h3>
+                <p id="availableJobs">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>My Applications</h3>
+                <p id="totalApplications">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Shortlisted</h3>
+                <p id="shortlistedApplications">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Selected</h3>
+                <p id="selectedApplications">0</p>
+            </div>
+        </section>
+
+        <section class="dashboard-section">
+            <h2>My Profile</h2>
+
+            <form id="profileForm">
+                <label for="phone">Phone</label>
+                <input id="phone" type="tel" placeholder="Enter phone number">
+
+                <label for="course">Course</label>
+                <input id="course" type="text" placeholder="e.g. MCA">
+
+                <label for="graduationYear">Graduation Year</label>
+                <input id="graduationYear" type="number" placeholder="e.g. 2027">
+
+                <button type="submit">Save Profile</button>
+                <p id="profileMessage"></p>
+            </form>
+        </section>
+
+        <section class="dashboard-section">
+            <h2>Upload Resume (PDF)</h2>
+
+            <form id="resumeForm">
+                <label for="resume">Select your resume (PDF, max 5 MB)</label>
+                <input
+                    id="resume"
+                    name="file"
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    required
+                >
+
+                <button type="submit">Upload Resume</button>
+                <p id="resumeMessage" role="status" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <section class="dashboard-section">
+            <h2>Available Jobs</h2>
+            <p id="jobsMessage"></p>
+            <div id="jobsList"></div>
+        </section>
+
+        <section class="dashboard-section">
+            <h2>My Applications</h2>
+            <p id="applicationsMessage"></p>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Position</th>
+                            <th>Status</th>
+                            <th>Applied On</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicationsTable"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="student.js"></script>
+</body>
+</html>
