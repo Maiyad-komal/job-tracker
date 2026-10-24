@@ -1,33 +1,61 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const API = "http://127.0.0.1:8000";
+    const API = (typeof API_URL !== "undefined" && API_URL)
+        ? API_URL
+        : "http://127.0.0.1:8000";
 
-    function getToken() {
-        return localStorage.getItem("access_token");
+    const token = () => localStorage.getItem("access_token");
+    const state = {
+        companies: [],
+        jobs: [],
+        applications: [],
+        students: []
+    };
+    const pages = { companies: 1, jobs: 1, applications: 1, students: 1 };
+    const tables = {};
+
+    const $ = id => document.getElementById(id);
+
+    function message(id, text, error = false) {
+        const element = $(id);
+        if (!element) return;
+        element.textContent = text;
+        element.classList.toggle("error-message", error);
+        element.classList.toggle("success-message", !error && !!text);
     }
 
-    function logout() {
-        localStorage.removeItem("access_token");
-        window.location.href = "login.html";
+    function cell(row, value) {
+        const td = document.createElement("td");
+        td.textContent = value ?? "—";
+        row.appendChild(td);
+        return td;
     }
 
-    const logoutButton = document.getElementById("logoutButton");
-
-    if (logoutButton) {
-        logoutButton.addEventListener("click", logout);
+    function makeButton(text, className, callback, disabled = false) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = text;
+        button.className = className;
+        button.disabled = disabled;
+        button.addEventListener("click", callback);
+        return button;
     }
 
-    if (!getToken()) {
-        alert("Please login first.");
-        window.location.href = "login.html";
-        return;
+    function statusBadge(value) {
+        const span = document.createElement("span");
+        const normalized = String(value || "").toLowerCase();
+        span.className = "status-pill " +
+            (["active", "open", "selected"].includes(normalized) ? "status-green" :
+            ["shortlisted", "under review"].includes(normalized) ? "status-blue" :
+            ["inactive", "closed", "rejected"].includes(normalized) ? "status-red" :
+            "status-orange");
+        span.textContent = value || "Applied";
+        return span;
     }
 
     async function apiRequest(path, options = {}) {
-        const token = getToken();
-
         const headers = {
             ...(options.headers || {}),
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token()}`
         };
 
         const response = await fetch(`${API}${path}`, {
@@ -36,28 +64,29 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         let data = null;
-
         try {
             data = await response.json();
         } catch {
             data = null;
         }
 
-        if (response.status === 401 || response.status === 403) {
-            throw new Error(
-                response.status === 401
-                    ? "Session expired. Please log in again."
-                    : "Access denied. Please log in with an admin account."
-            );
+        if (response.status === 401) {
+            localStorage.removeItem("access_token");
+            alert("Your session has expired. Please log in again.");
+            window.location.href = "login.html";
+            throw new Error("Session expired.");
+        }
+
+        if (response.status === 403) {
+            throw new Error("Access denied. Please use an admin account.");
         }
 
         if (!response.ok) {
-            const detail = data?.detail;
             throw new Error(
-                typeof detail === "string"
-                    ? detail
-                    : detail
-                        ? JSON.stringify(detail)
+                typeof data?.detail === "string"
+                    ? data.detail
+                    : data?.detail
+                        ? JSON.stringify(data.detail)
                         : `Request failed (${response.status})`
             );
         }
@@ -65,546 +94,495 @@ document.addEventListener("DOMContentLoaded", () => {
         return data;
     }
 
-    function showMessage(element, message, isError = false) {
-        if (!element) return;
-
-        element.textContent = message;
-        element.style.color = isError ? "red" : "green";
+    function jsonOptions(method, body) {
+        return {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        };
     }
 
-    // ==========================================
-    // 1. LOAD STUDENT APPLICATIONS
-    // ==========================================
+    function setTable(key, tbodyId, pageSizeId, paginationId, colSpan, renderer) {
+        tables[key] = {
+            tbodyId, pageSizeId, paginationId, colSpan, renderer, data: []
+        };
+    }
 
-    async function loadApplications() {
-        const tableBody = document.getElementById("applicationsTable");
+    function renderTable(key, newData) {
+        const config = tables[key];
+        if (!config) return;
 
-        if (!tableBody) return;
+        if (newData !== undefined) config.data = newData;
 
-        tableBody.innerHTML =
-            "<tr><td colspan='7'>Loading applications...</td></tr>";
+        const tbody = $(config.tbodyId);
+        const pagination = $(config.paginationId);
+        const size = Number($(config.pageSizeId)?.value || 5);
+        const total = config.data.length;
+        const totalPages = Math.max(1, Math.ceil(total / size));
 
-        try {
-            const applications = await apiRequest("/admin/applications");
+        pages[key] = Math.min(pages[key], totalPages);
+        pages[key] = Math.max(1, pages[key]);
 
-            tableBody.innerHTML = "";
+        tbody.replaceChildren();
 
-            if (!Array.isArray(applications) || applications.length === 0) {
-                tableBody.innerHTML =
-                    "<tr><td colspan='7'>No applications found.</td></tr>";
-                return;
-            }
-
-            applications.forEach((app) => {
-                const row = document.createElement("tr");
-
-                function addCell(value) {
-                    const cell = document.createElement("td");
-                    cell.textContent = value ?? "-";
-                    row.appendChild(cell);
-                    return cell;
-                }
-
-                addCell(app.student_name);
-                addCell(app.student_email);
-                addCell(app.company_name);
-                addCell(app.job_title);
-                addCell(app.status || "Applied");
-
-                // Status dropdown and update button
-                const actionCell = document.createElement("td");
-                const statusSelect = document.createElement("select");
-
-                const statuses = [
-                    "Applied",
-                    "Under Review",
-                    "Shortlisted",
-                    "Selected",
-                    "Rejected"
-                ];
-
-                statuses.forEach((status) => {
-                    const option = document.createElement("option");
-                    option.value = status;
-                    option.textContent = status;
-                    statusSelect.appendChild(option);
-                });
-
-                const currentStatus = String(
-                    app.status || "Applied"
-                ).toLowerCase();
-
-                const matchingStatus = statuses.find(
-                    status => status.toLowerCase() === currentStatus
-                );
-
-                statusSelect.value = matchingStatus || "Applied";
-
-                const updateButton = document.createElement("button");
-                updateButton.type = "button";
-                updateButton.textContent = "Update Status";
-
-                const message = document.createElement("span");
-                message.style.marginLeft = "8px";
-
-                updateButton.addEventListener("click", async () => {
-                    if (app.id == null) {
-                        showMessage(
-                            message,
-                            "Application ID is missing.",
-                            true
-                        );
-                        return;
-                    }
-
-                    updateButton.disabled = true;
-                    showMessage(message, "Saving...");
-
-                    try {
-                        await apiRequest(
-                            `/admin/applications/${app.id}/status`,
-                            {
-                                method: "PUT",
-                                headers: {
-                                    "Content-Type": "application/json"
-                                },
-                                body: JSON.stringify({
-                                    status: statusSelect.value
-                                })
-                            }
-                        );
-
-                        showMessage(message, "Updated successfully!");
-
-                        // Reload the table with saved status
-                        await loadApplications();
-
-                    } catch (error) {
-                        console.error("Status update error:", error);
-                        showMessage(
-                            message,
-                            error.message || "Could not update status.",
-                            true
-                        );
-                    } finally {
-                        updateButton.disabled = false;
-                    }
-                });
-
-                actionCell.appendChild(statusSelect);
-                actionCell.appendChild(document.createElement("br"));
-                actionCell.appendChild(updateButton);
-                actionCell.appendChild(message);
-                row.appendChild(actionCell);
-
-                // Resume link
-                const resumeCell = document.createElement("td");
-
-                if (app.resume_path) {
-                    const resumeURL = app.resume_path.startsWith("http")
-                        ? app.resume_path
-                        : `${API}${app.resume_path.startsWith("/")
-                            ? app.resume_path
-                            : "/" + app.resume_path}`;
-
-                    const link = document.createElement("a");
-                    link.href = resumeURL;
-                    link.textContent = "View Resume";
-                    link.target = "_blank";
-                    link.rel = "noopener noreferrer";
-
-                    resumeCell.appendChild(link);
-                } else {
-                    resumeCell.textContent = "No resume uploaded";
-                }
-
-                row.appendChild(resumeCell);
-                tableBody.appendChild(row);
-            });
-
-        } catch (error) {
-            console.error("Applications error:", error);
-
-            tableBody.innerHTML = "";
-
+        if (total === 0) {
             const row = document.createElement("tr");
-            const cell = document.createElement("td");
-            cell.colSpan = 7;
-            cell.textContent =
-                error.message || "Could not load applications.";
-
-            row.appendChild(cell);
-            tableBody.appendChild(row);
+            const td = document.createElement("td");
+            td.colSpan = config.colSpan;
+            td.className = "empty-cell";
+            td.textContent = "No records found.";
+            row.appendChild(td);
+            tbody.appendChild(row);
+        } else {
+            const start = (pages[key] - 1) * size;
+            config.data.slice(start, start + size).forEach(item => {
+                tbody.appendChild(config.renderer(item));
+            });
         }
+
+        pagination.replaceChildren();
+
+        const info = document.createElement("span");
+        info.className = "pagination-info";
+        info.textContent = total
+            ? `${(pages[key] - 1) * size + 1}–${Math.min(pages[key] * size, total)} of ${total}`
+            : "0 records";
+
+        const controls = document.createElement("div");
+        controls.className = "pagination-controls";
+
+        const previous = makeButton("← Previous", "page-button",
+            () => { pages[key]--; renderTable(key); }, pages[key] <= 1);
+
+        const next = makeButton("Next →", "page-button",
+            () => { pages[key]++; renderTable(key); }, pages[key] >= totalPages);
+
+        const pageLabel = document.createElement("span");
+        pageLabel.className = "page-number";
+        pageLabel.textContent = `Page ${pages[key]} of ${totalPages}`;
+
+        controls.append(previous, pageLabel, next);
+        pagination.append(info, controls);
     }
 
-    // ==========================================
-    // 2. LOAD COMPANIES
-    // ==========================================
+    function refreshCompanies() {
+        const query = ($("companiesSearch")?.value || "").trim().toLowerCase();
+        renderTable("companies", state.companies.filter(company =>
+            [company.name, company.website, company.location]
+                .some(value => String(value || "").toLowerCase().includes(query))
+        ));
+    }
+
+    function refreshJobs() {
+        const query = ($("jobsSearch")?.value || "").trim().toLowerCase();
+        const status = $("jobsStatusFilter")?.value || "";
+        renderTable("jobs", state.jobs.filter(job => {
+            const matchesQuery = [
+                job.title, job.company_name, job.location, job.job_type
+            ].some(value => String(value || "").toLowerCase().includes(query));
+            const matchesStatus = !status ||
+                (status === "open" ? job.is_active : !job.is_active);
+            return matchesQuery && matchesStatus;
+        }));
+    }
+
+    function refreshApplications() {
+        const query = ($("applicationsSearch")?.value || "").trim().toLowerCase();
+        const status = ($("applicationFilter")?.value || "").toLowerCase();
+        renderTable("applications", state.applications.filter(app => {
+            const matchesQuery = [
+                app.student_name, app.student_email, app.company_name, app.job_title
+            ].some(value => String(value || "").toLowerCase().includes(query));
+            const currentStatus = String(app.status || "Applied").toLowerCase();
+            const matchesStatus = !status || currentStatus === status;
+            return matchesQuery && matchesStatus;
+        }));
+    }
+
+    function refreshStudents() {
+        const query = ($("studentsSearch")?.value || "").trim().toLowerCase();
+        const status = $("studentsStatusFilter")?.value || "";
+        renderTable("students", state.students.filter(student => {
+            const matchesQuery = [student.name, student.email]
+                .some(value => String(value || "").toLowerCase().includes(query));
+            const matchesStatus = !status ||
+                (status === "active" ? student.is_active : !student.is_active);
+            return matchesQuery && matchesStatus;
+        }));
+    }
+
+    function updateStats() {
+        $("totalStudents").textContent = state.students.length;
+        $("totalCompanies").textContent =
+            state.companies.filter(company => company.is_active).length;
+        $("totalJobs").textContent =
+            state.jobs.filter(job => job.is_active).length;
+        $("totalApplications").textContent = state.applications.length;
+    }
 
     async function loadCompanies() {
-        const companyTable = document.getElementById("companiesTable");
-        const companyDropdown = document.getElementById("jobCompany");
-
         try {
-            const companies = await apiRequest("/companies");
+            state.companies = await apiRequest("/admin/companies");
+            if (!Array.isArray(state.companies)) state.companies = [];
 
-            if (!Array.isArray(companies)) {
-                throw new Error("Invalid companies response.");
-            }
+            const dropdown = $("jobCompany");
+            const previous = dropdown.value;
+            dropdown.replaceChildren(new Option("Select a company", ""));
 
-            if (companyDropdown) {
-                const previousValue = companyDropdown.value;
-
-                companyDropdown.innerHTML =
-                    '<option value="">Select a company</option>';
-
-                companies.forEach((company) => {
-                    const option = document.createElement("option");
-                    option.value = company.id;
-                    option.textContent = company.name;
-                    companyDropdown.appendChild(option);
-                });
-
-                if (
-                    [...companyDropdown.options].some(
-                        option => option.value === previousValue
-                    )
-                ) {
-                    companyDropdown.value = previousValue;
-                }
-            }
-
-            if (companyTable) {
-                companyTable.innerHTML = "";
-
-                if (companies.length === 0) {
-                    companyTable.innerHTML =
-                        "<tr><td colspan='3'>No companies found.</td></tr>";
-                }
-
-                companies.forEach((company) => {
-                    const row = document.createElement("tr");
-
-                    const nameCell = document.createElement("td");
-                    nameCell.textContent = company.name || "-";
-                    row.appendChild(nameCell);
-
-                    const websiteCell = document.createElement("td");
-
-                    if (company.website) {
-                        const websiteLink = document.createElement("a");
-                        websiteLink.href = company.website;
-                        websiteLink.textContent = company.website;
-                        websiteLink.target = "_blank";
-                        websiteLink.rel = "noopener noreferrer";
-                        websiteCell.appendChild(websiteLink);
-                    } else {
-                        websiteCell.textContent = "-";
-                    }
-
-                    row.appendChild(websiteCell);
-
-                    const actionCell = document.createElement("td");
-                    actionCell.textContent = "Added";
-                    row.appendChild(actionCell);
-
-                    companyTable.appendChild(row);
-                });
-            }
-
-        } catch (error) {
-            console.error("Companies error:", error);
-        }
-    }
-
-    // ==========================================
-    // 3. ADD COMPANY
-    // ==========================================
-
-    const companyForm = document.getElementById("companyForm");
-
-    if (companyForm) {
-        companyForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
-
-            const message = document.getElementById("companyMessage");
-            const name =
-                document.getElementById("companyName")?.value.trim() || "";
-
-            const description =
-                document.getElementById("companyDescription")?.value.trim() || "";
-
-            const website =
-                document.getElementById("companyWebsite")?.value.trim() || "";
-
-            if (!name) {
-                showMessage(message, "Please enter company name.", true);
-                return;
-            }
-
-            showMessage(message, "Adding company...");
-
-            try {
-                await apiRequest("/admin/companies", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        name,
-                        description: description || null,
-                        website: website || null
-                    })
-                });
-
-                showMessage(message, "Company added successfully!");
-                companyForm.reset();
-
-                await loadCompanies();
-
-            } catch (error) {
-                console.error("Add company error:", error);
-                showMessage(
-                    message,
-                    "Could not add company: " + error.message,
-                    true
-                );
-            }
-        });
-    }
-
-    // ==========================================
-    // 4. ADD JOB
-    // ==========================================
-
-    const jobForm = document.getElementById("jobForm");
-
-    if (jobForm) {
-        jobForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
-
-            const message = document.getElementById("jobMessage");
-            const title =
-                document.getElementById("jobTitle")?.value.trim() || "";
-
-            const companyId =
-                document.getElementById("jobCompany")?.value || "";
-
-            const description =
-                document.getElementById("jobDescription")?.value.trim() || "";
-
-            const skills =
-                document.getElementById("jobSkills")?.value.trim() || "";
-
-            const eligibility =
-                document.getElementById("jobEligibility")?.value.trim() || "";
-
-            const deadline =
-                document.getElementById("jobDeadline")?.value || "";
-
-            const location =
-                document.getElementById("jobLocation")?.value.trim() || "Not specified";
-
-            const jobType =
-                document.getElementById("jobType")?.value || "Full-time";
-
-            const salary =
-                document.getElementById("jobSalary")?.value.trim() || "Negotiable";
-
-            if (!title || !companyId || !description || !deadline) {
-                showMessage(
-                    message,
-                    "Please enter job title, company, description and deadline.",
-                    true
-                );
-                return;
-            }
-
-            showMessage(message, "Posting job...");
-
-            try {
-                const jobData = {
-                    title,
-                    description,
-                    location,
-                    job_type: jobType,
-                    salary,
-                    deadline: deadline.length === 10
-                        ? `${deadline}T23:59:00`
-                        : deadline,
-                    company_id: Number(companyId)
-                };
-
-                // Include these fields only if they are filled in
-                if (skills) jobData.required_skills = skills;
-                if (eligibility) jobData.eligibility = eligibility;
-
-                await apiRequest("/admin/jobs", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(jobData)
-                });
-
-                showMessage(message, "Job posted successfully!");
-                jobForm.reset();
-
-                await loadCompanies();
-                await loadJobs();
-
-            } catch (error) {
-                console.error("Add job error:", error);
-                showMessage(
-                    message,
-                    "Could not post job: " + error.message,
-                    true
-                );
-            }
-        });
-    }
-
-    // ==========================================
-    // 5. LOAD JOBS
-    // ==========================================
-
-    async function loadJobs() {
-        const jobsTable = document.getElementById("jobsTable");
-
-        if (!jobsTable) return;
-
-        jobsTable.innerHTML =
-            "<tr><td colspan='5'>Loading jobs...</td></tr>";
-
-        try {
-            const jobs = await apiRequest("/jobs");
-            jobsTable.innerHTML = "";
-
-            if (!Array.isArray(jobs) || jobs.length === 0) {
-                jobsTable.innerHTML =
-                    "<tr><td colspan='5'>No jobs found.</td></tr>";
-                return;
-            }
-
-            jobs.forEach((job) => {
-                const row = document.createElement("tr");
-
-                [
-                    job.title,
-                    job.company_name,
-                    job.location,
-                    job.job_type,
-                    job.deadline
-                ].forEach((value) => {
-                    const cell = document.createElement("td");
-                    cell.textContent = value ?? "-";
-                    row.appendChild(cell);
-                });
-
-                jobsTable.appendChild(row);
+            state.companies.filter(company => company.is_active).forEach(company => {
+                dropdown.add(new Option(company.name, company.id));
             });
 
+            if ([...dropdown.options].some(option => option.value === previous)) {
+                dropdown.value = previous;
+            }
+
+            refreshCompanies();
+            updateStats();
+            message("companiesMessage", "");
         } catch (error) {
-            console.error("Jobs error:", error);
-            jobsTable.innerHTML =
-                "<tr><td colspan='5'>Could not load jobs: " +
-                (error.message || "Unknown error") +
-                "</td></tr>";
+            message("companiesMessage", error.message, true);
+            renderTable("companies", []);
         }
     }
 
-// ==========================================
-    // DASHBOARD STATISTICS
-    // ==========================================
+    async function loadJobs() {
+        try {
+            state.jobs = await apiRequest("/admin/jobs");
+            if (!Array.isArray(state.jobs)) state.jobs = [];
+            refreshJobs();
+            updateStats();
+            message("jobsMessage", "");
+        } catch (error) {
+            message("jobsMessage", error.message, true);
+            renderTable("jobs", []);
+        }
+    }
+
+    async function loadApplications() {
+        try {
+            state.applications = await apiRequest("/admin/applications");
+            if (!Array.isArray(state.applications)) state.applications = [];
+            refreshApplications();
+            updateStats();
+            message("applicationsMessage", "");
+        } catch (error) {
+            message("applicationsMessage", error.message, true);
+            renderTable("applications", []);
+        }
+    }
+
+    async function loadStudents() {
+        try {
+            state.students = await apiRequest("/admin/students");
+            if (!Array.isArray(state.students)) state.students = [];
+            refreshStudents();
+            updateStats();
+            message("studentsMessage", "");
+        } catch (error) {
+            message("studentsMessage", error.message, true);
+            renderTable("students", []);
+        }
+    }
+
+    // Company rows
+    function companyRow(company) {
+        const row = document.createElement("tr");
+        cell(row, company.name);
+
+        const websiteCell = document.createElement("td");
+        if (company.website) {
+            const link = document.createElement("a");
+            link.href = company.website;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = "Visit website ↗";
+            websiteCell.appendChild(link);
+        } else {
+            websiteCell.textContent = "—";
+        }
+        row.appendChild(websiteCell);
+        cell(row, company.location || "—");
+        const statusCell = document.createElement("td");
+        statusCell.appendChild(statusBadge(company.is_active ? "Active" : "Inactive"));
+        row.appendChild(statusCell);
+
+        const actionCell = document.createElement("td");
+        actionCell.appendChild(makeButton("Delete", "danger-button", async () => {
+            if (!confirm(`Delete company "${company.name}"?`)) return;
+            try {
+                await apiRequest(`/admin/companies/${company.id}`, { method: "DELETE" });
+                message("companyMessage", "Company deleted successfully.");
+                await loadCompanies();
+                await loadDashboardStats();
+            } catch (error) {
+                message("companiesMessage", error.message, true);
+            }
+        }));
+        row.appendChild(actionCell);
+        return row;
+    }
+
+    // Job rows
+    function jobRow(job) {
+        const row = document.createElement("tr");
+        cell(row, job.title);
+        cell(row, job.company_name);
+        cell(row, job.location || "—");
+        cell(row, job.job_type || "—");
+
+        let deadline = "—";
+        if (job.deadline) {
+            const date = new Date(job.deadline);
+            if (!Number.isNaN(date.getTime())) deadline = date.toLocaleDateString();
+        }
+        cell(row, deadline);
+
+        const statusCell = document.createElement("td");
+        statusCell.appendChild(statusBadge(job.is_active ? "Open" : "Closed"));
+        row.appendChild(statusCell);
+
+        const actionCell = document.createElement("td");
+        actionCell.appendChild(makeButton(
+            job.is_active ? "Close Job" : "Closed",
+            job.is_active ? "danger-button" : "secondary-button",
+            async () => {
+                if (!confirm(`Close "${job.title}"? Students will no longer see this opening.`)) return;
+                try {
+                    await apiRequest(`/admin/jobs/${job.id}`, { method: "DELETE" });
+                    message("jobsMessage", "Job closed successfully.");
+                    await loadJobs();
+                    await loadDashboardStats();
+                } catch (error) {
+                    message("jobsMessage", error.message, true);
+                }
+            },
+            !job.is_active
+        ));
+        row.appendChild(actionCell);
+        return row;
+    }
+
+    // Application rows
+    function applicationRow(app) {
+        const row = document.createElement("tr");
+        cell(row, app.student_name);
+        cell(row, app.student_email);
+        cell(row, app.company_name);
+        cell(row, app.job_title);
+
+        const resumeCell = document.createElement("td");
+        if (app.resume_path) {
+            const link = document.createElement("a");
+            link.href = app.resume_path.startsWith("http")
+                ? app.resume_path
+                : `${API}${app.resume_path.startsWith("/") ? "" : "/"}${app.resume_path}`;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = "View resume ↗";
+            resumeCell.appendChild(link);
+        } else {
+            resumeCell.textContent = "Not uploaded";
+        }
+        row.appendChild(resumeCell);
+
+        const statusCell = document.createElement("td");
+        statusCell.appendChild(statusBadge(app.status));
+        row.appendChild(statusCell);
+
+        const actionCell = document.createElement("td");
+        actionCell.className = "status-action-cell";
+
+        const select = document.createElement("select");
+        [
+            "Applied", "Under Review", "Shortlisted", "Selected", "Rejected"
+        ].forEach(value => select.add(new Option(value, value)));
+
+        const match = [...select.options].find(
+            option => option.value.toLowerCase() === String(app.status || "Applied").toLowerCase()
+        );
+        select.value = match ? match.value : "Applied";
+
+        const updateButton = makeButton("Save", "small-primary-button", async () => {
+            updateButton.disabled = true;
+            try {
+                await apiRequest(
+                    `/admin/applications/${app.id}/status`,
+                    jsonOptions("PUT", { status: select.value })
+                );
+                message("applicationsMessage", "Application status updated.");
+                await loadApplications();
+                await loadDashboardStats();
+            } catch (error) {
+                message("applicationsMessage", error.message, true);
+            } finally {
+                updateButton.disabled = false;
+            }
+        });
+
+        actionCell.append(select, updateButton);
+        row.appendChild(actionCell);
+        return row;
+    }
+
+    // Student rows
+    function studentRow(student) {
+        const row = document.createElement("tr");
+        cell(row, student.name);
+        cell(row, student.email);
+        cell(row, student.role);
+
+        const statusCell = document.createElement("td");
+        statusCell.appendChild(statusBadge(student.is_active ? "Active" : "Inactive"));
+        row.appendChild(statusCell);
+
+        const actionCell = document.createElement("td");
+        actionCell.appendChild(makeButton(
+            student.is_active ? "Deactivate" : "Activate",
+            student.is_active ? "danger-button" : "small-primary-button",
+            async () => {
+                const action = student.is_active ? "deactivate" : "activate";
+                if (!confirm(`Are you sure you want to ${action} ${student.name}'s account?`)) return;
+                try {
+                    await apiRequest(
+                        `/admin/users/${student.id}`,
+                        jsonOptions("PUT", { is_active: !student.is_active })
+                    );
+                    message("studentsMessage", `Student account ${action}d successfully.`);
+                    await loadStudents();
+                } catch (error) {
+                    message("studentsMessage", error.message, true);
+                }
+            }
+        ));
+        row.appendChild(actionCell);
+        return row;
+    }
+
+    // Set up paginated tables
+    setTable("companies", "companiesTable", "companiesPageSize", "companiesPagination", 5, companyRow);
+    setTable("jobs", "jobsTable", "jobsPageSize", "jobsPagination", 7, jobRow);
+    setTable("applications", "applicationsTable", "applicationsPageSize", "applicationsPagination", 7, applicationRow);
+    setTable("students", "studentsTable", "studentsPageSize", "studentsPagination", 5, studentRow);
+
+    // Tabs
+    document.querySelectorAll(".nav-item[data-tab]").forEach(button => {
+        button.addEventListener("click", () => {
+            document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
+            document.querySelectorAll(".tab-panel").forEach(panel => panel.hidden = true);
+            button.classList.add("active");
+            const panel = $(button.dataset.tab);
+            if (panel) panel.hidden = false;
+        });
+    });
+
+    // Search/filter events
+    $("companiesSearch").addEventListener("input", () => { pages.companies = 1; refreshCompanies(); });
+    $("jobsSearch").addEventListener("input", () => { pages.jobs = 1; refreshJobs(); });
+    $("jobsStatusFilter").addEventListener("change", () => { pages.jobs = 1; refreshJobs(); });
+    $("applicationsSearch").addEventListener("input", () => { pages.applications = 1; refreshApplications(); });
+    $("applicationFilter").addEventListener("change", () => { pages.applications = 1; refreshApplications(); });
+    $("studentsSearch").addEventListener("input", () => { pages.students = 1; refreshStudents(); });
+    $("studentsStatusFilter").addEventListener("change", () => { pages.students = 1; refreshStudents(); });
+
+    Object.keys(tables).forEach(key => {
+        $(tables[key].pageSizeId).addEventListener("change", () => {
+            pages[key] = 1;
+            renderTable(key);
+        });
+    });
+
+    // Add company
+    $("companyForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        message("companyMessage", "Adding company...");
+
+        try {
+            await apiRequest("/admin/companies", jsonOptions("POST", {
+                name: $("companyName").value.trim(),
+                description: $("companyDescription").value.trim() || null,
+                website: $("companyWebsite").value.trim() || null,
+                location: $("companyLocation").value.trim() || null
+            }));
+
+            $("companyForm").reset();
+            message("companyMessage", "Company added successfully.");
+            await loadCompanies();
+            await loadDashboardStats();
+        } catch (error) {
+            message("companyMessage", error.message, true);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    // Add job
+    $("jobForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        message("jobMessage", "Posting job...");
+
+        const deadline = $("jobDeadline").value;
+        const jobData = {
+            title: $("jobTitle").value.trim(),
+            company_id: Number($("jobCompany").value),
+            description: $("jobDescription").value.trim() || null,
+            location: $("jobLocation").value.trim() || null,
+            job_type: $("jobType").value || "Full-time",
+            salary: $("jobSalary").value.trim() || null,
+            deadline: deadline ? `${deadline}T23:59:00` : null
+        };
+
+        try {
+            await apiRequest("/admin/jobs", jsonOptions("POST", jobData));
+            $("jobForm").reset();
+            message("jobMessage", "Job posted successfully.");
+            await loadCompanies();
+            await loadJobs();
+            await loadDashboardStats();
+        } catch (error) {
+            message("jobMessage", error.message, true);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    $("logoutButton").addEventListener("click", () => {
+        localStorage.removeItem("access_token");
+        window.location.href = "login.html";
+    });
 
     async function loadDashboardStats() {
         try {
-            const [companies, jobs, applications, students] =
-                await Promise.all([
-                    apiRequest("/companies"),
-                    apiRequest("/jobs"),
-                    apiRequest("/admin/applications"),
-                    apiRequest("/admin/students")
-                ]);
+            const [companies, jobs, applications, students] = await Promise.all([
+                apiRequest("/admin/companies"),
+                apiRequest("/admin/jobs"),
+                apiRequest("/admin/applications"),
+                apiRequest("/admin/students")
+            ]);
 
-            document.getElementById("totalStudents").textContent =
-                Array.isArray(students) ? students.length : 0;
-
-            document.getElementById("totalCompanies").textContent =
-                Array.isArray(companies) ? companies.length : 0;
-
-            document.getElementById("totalJobs").textContent =
-                Array.isArray(jobs) ? jobs.length : 0;
-
-            document.getElementById("totalApplications").textContent =
-                Array.isArray(applications) ? applications.length : 0;
-
+            $("totalStudents").textContent = students.length;
+            $("totalCompanies").textContent = companies.filter(item => item.is_active).length;
+            $("totalJobs").textContent = jobs.filter(item => item.is_active).length;
+            $("totalApplications").textContent = applications.length;
         } catch (error) {
             console.error("Dashboard stats error:", error);
         }
     }
 
-    async function loadRegisteredStudents() {
-        const table = document.getElementById("studentsTable");
-        const message = document.getElementById("studentsMessage");
-    
-        if (!table) return;
-    
-        table.innerHTML = "";
-    
-        try {
-            const students = await apiRequest("/admin/students");
-    
-            if (!Array.isArray(students) || students.length === 0) {
-                if (message) {
-                    message.textContent = "No registered students found.";
-                }
-                return;
-            }
-    
-            if (message) message.textContent = "";
-    
-            students.forEach(student => {
-                const row = document.createElement("tr");
-    
-                const name = document.createElement("td");
-                name.textContent = student.name || "—";
-    
-                const email = document.createElement("td");
-                email.textContent = student.email || "—";
-    
-                const role = document.createElement("td");
-                role.textContent = student.role || "student";
-    
-                const accountStatus = document.createElement("td");
-                accountStatus.textContent = student.is_active
-                    ? "Active"
-                    : "Inactive";
-    
-                const action = document.createElement("td");
-                action.textContent = "—";
-    
-                row.append(name, email, role, accountStatus, action);
-                table.appendChild(row);
-            });
-        } catch (error) {
-            console.error("Registered students error:", error);
-    
-            if (message) {
-                message.textContent =
-                    error.message || "Could not load registered students.";
-            }
-        }
+    if (!token()) {
+        alert("Please log in first.");
+        window.location.href = "login.html";
+        return;
     }
 
-    // ==========================================
-    // 6. INITIAL PAGE LOAD
-    // ==========================================
-
-    loadDashboardStats();
-    loadApplications();
+    // Load each section; one failure won't stop the other sections.
     loadCompanies();
     loadJobs();
-    loadRegisteredStudents();
+    loadApplications();
+    loadStudents();
+    loadDashboardStats();
 });

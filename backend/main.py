@@ -350,6 +350,18 @@ def list_companies(
     )
     return [company_details(company) for company in companies]
 
+@app.get("/admin/companies")
+def get_admin_companies(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    companies = (
+        db.query(Company)
+        .order_by(Company.name)
+        .all()
+    )
+    return [company_details(company) for company in companies]
+
 
 @app.post("/admin/companies", status_code=status.HTTP_201_CREATED)
 def create_company(
@@ -402,6 +414,18 @@ def list_jobs(
             Job.is_active.is_(True),
             Company.is_active.is_(True),
         )
+        .order_by(Job.created_at.desc())
+        .all()
+    )
+    return [job_details(job) for job in jobs]
+
+@app.get("/admin/jobs")
+def get_admin_jobs(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    jobs = (
+        db.query(Job)
         .order_by(Job.created_at.desc())
         .all()
     )

@@ -3,178 +3,328 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | Job Tracker</title>
+    <title>Admin Dashboard | Student Placement Portal</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <main class="dashboard">
+<body class="admin-page">
+<div class="admin-layout">
 
+    <aside class="admin-sidebar">
+        <a class="brand" href="admin_dashboard.html">
+            <span class="brand-icon">SP</span>
+            <span>Placement Portal<small>ADMIN CONSOLE</small></span>
+        </a>
+
+        <p class="sidebar-label">WORKSPACE</p>
+
+        <nav class="sidebar-nav">
+            <button class="nav-item active" data-tab="companiesPanel">🏢 <span>Companies</span></button>
+            <button class="nav-item" data-tab="jobsPanel">💼 <span>Jobs & Openings</span></button>
+            <button class="nav-item" data-tab="applicationsPanel">📋 <span>Applications</span></button>
+            <button class="nav-item" data-tab="studentsPanel">🎓 <span>Students</span></button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="admin-identity">
+                <span class="avatar">A</span>
+                <span>Administrator<small>Portal Management</small></span>
+            </div>
+            <button id="logoutButton" class="logout-button" type="button">↗ Logout</button>
+        </div>
+    </aside>
+
+    <main class="admin-main">
         <header class="dashboard-header">
             <div>
+                <p class="eyebrow">PLACEMENT MANAGEMENT</p>
                 <h1>Admin Dashboard</h1>
-                <p>Manage students, companies and placement activities.</p>
+                <p class="muted">Manage your placement activities from one place.</p>
             </div>
-            <button id="logoutButton" type="button">Logout</button>
+            <span class="live-badge"><span></span> Admin Workspace</span>
         </header>
 
         <section class="stats-grid">
             <article class="stat-card">
+                <div class="stat-icon purple">🎓</div>
                 <p>Total Students</p>
                 <h3 id="totalStudents">0</h3>
+                <small>Registered accounts</small>
             </article>
-
             <article class="stat-card">
+                <div class="stat-icon blue">🏢</div>
                 <p>Total Companies</p>
                 <h3 id="totalCompanies">0</h3>
+                <small>Active companies</small>
             </article>
-
             <article class="stat-card">
+                <div class="stat-icon green">💼</div>
                 <p>Total Jobs</p>
                 <h3 id="totalJobs">0</h3>
+                <small>Open positions</small>
             </article>
-
             <article class="stat-card">
+                <div class="stat-icon orange">📋</div>
                 <p>Total Applications</p>
                 <h3 id="totalApplications">0</h3>
+                <small>Student applications</small>
             </article>
         </section>
 
-        <section class="dashboard-section">
-            <h2>Manage Companies</h2>
+        <!-- COMPANIES -->
+        <section id="companiesPanel" class="tab-panel">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">ORGANISATIONS</p>
+                    <h2>Companies</h2>
+                    <p class="muted">Add and manage recruiting companies.</p>
+                </div>
+            </div>
 
-            <form id="companyForm">
-                <label for="companyName">Company Name</label>
-                <input id="companyName" type="text"
-                       placeholder="Enter company name" required>
+            <div class="content-card">
+                <h3 class="card-title">Add a company</h3>
+                <form id="companyForm" class="form-grid">
+                    <div class="form-field">
+                        <label for="companyName">Company name *</label>
+                        <input id="companyName" type="text" placeholder="e.g. ABC Technologies" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="companyWebsite">Website</label>
+                        <input id="companyWebsite" type="url" placeholder="https://example.com">
+                    </div>
+                    <div class="form-field">
+                        <label for="companyLocation">Location</label>
+                        <input id="companyLocation" type="text" placeholder="e.g. Ahmedabad">
+                    </div>
+                    <div class="form-field full-width">
+                        <label for="companyDescription">Description</label>
+                        <textarea id="companyDescription" rows="3" placeholder="About the company"></textarea>
+                    </div>
+                    <div class="form-actions full-width">
+                        <button type="submit" class="primary-button">+ Add Company</button>
+                        <p id="companyMessage" class="form-message"></p>
+                    </div>
+                </form>
+            </div>
 
-                <label for="companyDescription">Description</label>
-                <textarea id="companyDescription" rows="3"
-                          placeholder="Company details"></textarea>
-
-                <label for="companyWebsite">Website</label>
-                <input id="companyWebsite" type="url"
-                       placeholder="https://example.com">
-
-                <button type="submit">Add Company</button>
-                <p id="companyMessage"></p>
-            </form>
-
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Company</th>
-                            <th>Website</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="companiesTable"></tbody>
-                </table>
+            <div class="content-card">
+                <div class="table-toolbar">
+                    <div>
+                        <h3 class="card-title">Company directory</h3>
+                        <p class="muted">Search and manage companies.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <input id="companiesSearch" type="search" placeholder="Search companies...">
+                        <label class="page-size-label">Show
+                            <select id="companiesPageSize">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <p id="companiesMessage" class="form-message"></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>Company</th><th>Website</th><th>Location</th><th>Status</th><th>Action</th>
+                        </tr></thead>
+                        <tbody id="companiesTable"></tbody>
+                    </table>
+                </div>
+                <div id="companiesPagination" class="pagination"></div>
             </div>
         </section>
 
-        <section class="dashboard-section">
-            <h2>Manage Jobs</h2>
+        <!-- JOBS -->
+        <section id="jobsPanel" class="tab-panel" hidden>
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">OPPORTUNITIES</p>
+                    <h2>Jobs & Openings</h2>
+                    <p class="muted">Create openings and manage their availability.</p>
+                </div>
+            </div>
 
-            <form id="jobForm">
-                <label for="jobTitle">Job Title</label>
-                <input id="jobTitle" type="text"
-                       placeholder="e.g. Python Developer" required>
+            <div class="content-card">
+                <h3 class="card-title">Post a new job</h3>
+                <form id="jobForm" class="form-grid">
+                    <div class="form-field">
+                        <label for="jobTitle">Job title *</label>
+                        <input id="jobTitle" type="text" placeholder="e.g. Python Developer" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="jobCompany">Company *</label>
+                        <select id="jobCompany" required>
+                            <option value="">Select a company</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="jobLocation">Location</label>
+                        <input id="jobLocation" type="text" placeholder="e.g. Ahmedabad / Remote">
+                    </div>
+                    <div class="form-field">
+                        <label for="jobType">Job type</label>
+                        <select id="jobType">
+                            <option value="Full-time">Full-time</option>
+                            <option value="Internship">Internship</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Remote">Remote</option>
+                            <option value="Contract">Contract</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="jobSalary">Salary / Stipend</label>
+                        <input id="jobSalary" type="text" placeholder="e.g. ₹20,000/month">
+                    </div>
+                    <div class="form-field">
+                        <label for="jobDeadline">Application deadline</label>
+                        <input id="jobDeadline" type="date">
+                    </div>
+                    <div class="form-field full-width">
+                        <label for="jobDescription">Job description</label>
+                        <textarea id="jobDescription" rows="4" placeholder="Responsibilities and requirements"></textarea>
+                    </div>
+                    <div class="form-actions full-width">
+                        <button type="submit" class="primary-button">+ Post Job</button>
+                        <p id="jobMessage" class="form-message"></p>
+                    </div>
+                </form>
+            </div>
 
-                <label for="jobCompany">Company</label>
-                <select id="jobCompany" required>
-                    <option value="">Select a company</option>
-                </select>
-
-                <label for="jobDescription">Job Description</label>
-                <textarea id="jobDescription" rows="3"
-                          placeholder="Describe the role"></textarea>
-
-                <label for="jobSkills">Required Skills</label>
-                <input id="jobSkills" type="text"
-                       placeholder="Python, SQL, FastAPI">
-
-                <label for="jobEligibility">Eligibility</label>
-                <input id="jobEligibility" type="text"
-                       placeholder="e.g. MCA / BCA">
-
-                <label for="jobDeadline">Application Deadline</label>
-                <input id="jobDeadline" type="date">
-
-                <button type="submit">Post Job</button>
-                <p id="jobMessage"></p>
-            </form>
-
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Position</th>
-                            <th>Company</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="jobsTable"></tbody>
-                </table>
+            <div class="content-card">
+                <div class="table-toolbar">
+                    <div>
+                        <h3 class="card-title">All job openings</h3>
+                        <p class="muted">Includes closed jobs.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <input id="jobsSearch" type="search" placeholder="Search jobs...">
+                        <select id="jobsStatusFilter" aria-label="Filter jobs by status">
+                            <option value="">All statuses</option>
+                            <option value="open">Open</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                        <label class="page-size-label">Show
+                            <select id="jobsPageSize">
+                                <option value="5">5</option><option value="10">10</option>
+                                <option value="25">25</option><option value="50">50</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <p id="jobsMessage" class="form-message"></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>Position</th><th>Company</th><th>Location</th><th>Job Type</th>
+                            <th>Deadline</th><th>Status</th><th>Action</th>
+                        </tr></thead>
+                        <tbody id="jobsTable"></tbody>
+                    </table>
+                </div>
+                <div id="jobsPagination" class="pagination"></div>
             </div>
         </section>
 
-        <section class="dashboard-section">
-            <h2>Student Applications</h2>
+        <!-- APPLICATIONS -->
+        <section id="applicationsPanel" class="tab-panel" hidden>
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">CANDIDATE TRACKING</p>
+                    <h2>Applications</h2>
+                    <p class="muted">Review resumes and update application status.</p>
+                </div>
+            </div>
 
-            <label for="applicationFilter">Filter by Status</label>
-            <select id="applicationFilter">
-                <option value="">All Applications</option>
-                <option value="pending">Pending</option>
-                <option value="shortlisted">Shortlisted</option>
-                <option value="selected">Selected</option>
-                <option value="rejected">Rejected</option>
-            </select>
-
-            <p id="applicationsMessage"></p>
-
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Email</th>
-                            <th>Company</th>
-                            <th>Position</th>
-                            <th>Resume</th>
-                            <th>Status</th>
-                            <th>Update Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="applicationsTable"></tbody>
-                </table>
+            <div class="content-card">
+                <div class="table-toolbar">
+                    <div>
+                        <h3 class="card-title">Student applications</h3>
+                        <p class="muted">Track each candidate's progress.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <input id="applicationsSearch" type="search" placeholder="Search student or job...">
+                        <select id="applicationFilter" aria-label="Filter applications by status">
+                            <option value="">All applications</option>
+                            <option value="applied">Applied</option>
+                            <option value="under review">Under Review</option>
+                            <option value="shortlisted">Shortlisted</option>
+                            <option value="selected">Selected</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                        <label class="page-size-label">Show
+                            <select id="applicationsPageSize">
+                                <option value="5">5</option><option value="10">10</option>
+                                <option value="25">25</option><option value="50">50</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <p id="applicationsMessage" class="form-message"></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>Student</th><th>Email</th><th>Company</th><th>Position</th>
+                            <th>Resume</th><th>Status</th><th>Update Status</th>
+                        </tr></thead>
+                        <tbody id="applicationsTable"></tbody>
+                    </table>
+                </div>
+                <div id="applicationsPagination" class="pagination"></div>
             </div>
         </section>
 
-        <section class="dashboard-section">
-            <h2>Registered Students</h2>
-            <p id="studentsMessage"></p>
+        <!-- STUDENTS -->
+        <section id="studentsPanel" class="tab-panel" hidden>
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">STUDENT DIRECTORY</p>
+                    <h2>Students</h2>
+                    <p class="muted">Review registered accounts and account status.</p>
+                </div>
+            </div>
 
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Account Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentsTable"></tbody>
-                </table>
+            <div class="content-card">
+                <div class="table-toolbar">
+                    <div>
+                        <h3 class="card-title">Registered students</h3>
+                        <p class="muted">Activate or deactivate student accounts.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <input id="studentsSearch" type="search" placeholder="Search students...">
+                        <select id="studentsStatusFilter" aria-label="Filter students by status">
+                            <option value="">All accounts</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                        <label class="page-size-label">Show
+                            <select id="studentsPageSize">
+                                <option value="5">5</option><option value="10">10</option>
+                                <option value="25">25</option><option value="50">50</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <p id="studentsMessage" class="form-message"></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>Name</th><th>Email</th><th>Role</th><th>Account Status</th><th>Action</th>
+                        </tr></thead>
+                        <tbody id="studentsTable"></tbody>
+                    </table>
+                </div>
+                <div id="studentsPagination" class="pagination"></div>
             </div>
         </section>
 
+        <footer class="admin-footer">Student Placement Portal <span>Admin Management</span></footer>
     </main>
+</div>
 
-    <script src="config.js"></script>
-    <script src="admin.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
 </body>
 </html>

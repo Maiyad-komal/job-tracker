@@ -3,113 +3,524 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard - Placement Portal</title>
+    <title>Student Dashboard | Student Placement Portal</title>
     <link rel="stylesheet" href="style.css">
 
     <style>
-        #resumeMessage {
+        /* Student dashboard layout */
+        .student-page .student-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .student-page .student-sidebar {
+            width: 250px;
+            min-width: 250px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            background: #172b55;
+            color: #fff;
+        }
+
+        .student-page .student-sidebar .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 8px 28px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .student-page .brand-icon {
+            display: grid;
+            place-items: center;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: #4169e1;
+        }
+
+        .student-page .student-sidebar .brand small {
+            display: block;
+            margin-top: 5px;
+            color: #b8c7e8;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        .student-page .sidebar-label {
+            margin: 12px 10px;
+            color: #9aafd8;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+        }
+
+        .student-page .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .student-page .sidebar-nav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 12px;
+            border-radius: 9px;
+            color: #dce6ff;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background .2s;
+        }
+
+        .student-page .sidebar-nav .nav-item:hover,
+        .student-page .sidebar-nav .nav-item.active {
+            background: #3157d5;
+            color: #fff;
+        }
+
+        .student-page .sidebar-bottom {
+            margin-top: auto;
+            padding-top: 28px;
+        }
+
+        .student-page .admin-identity {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 14px 5px;
+            overflow-wrap: anywhere;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .student-page .admin-identity .avatar {
+            display: grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: #dce6ff;
+            color: #2444b5;
+        }
+
+        .student-page .admin-identity small {
+            display: block;
+            margin-top: 5px;
+            color: #b8c7e8;
+            font-size: 11px;
+        }
+
+        .student-page .sidebar-bottom .logout-button {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #43577e;
+            border-radius: 9px;
+            background: transparent;
+            color: #fff;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .student-page .sidebar-bottom .logout-button:hover {
+            background: #263d68;
+        }
+
+        .student-page .student-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .student-page .student-main .dashboard-header {
+            border-radius: 0;
+        }
+
+        .student-page .student-main .dashboard-container {
+            width: 92%;
+            max-width: 1440px;
+            margin: 30px auto;
+        }
+
+        .student-page #resumeMessage {
             display: block;
             min-height: 24px;
             margin-top: 12px;
             font-weight: 600;
             overflow-wrap: anywhere;
         }
+
+        .student-page .student-sidebar a:focus-visible,
+        .student-page button:focus-visible {
+            outline: 3px solid #90b4ff;
+            outline-offset: 3px;
+        }
+
+        @media (max-width: 760px) {
+            .student-page .student-layout {
+                flex-direction: column;
+            }
+
+            .student-page .student-sidebar {
+                width: 100%;
+                min-width: 0;
+                padding: 14px;
+            }
+
+            .student-page .student-sidebar .brand {
+                padding-bottom: 14px;
+            }
+
+            .student-page .sidebar-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .student-page .sidebar-nav .nav-item {
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            .student-page .sidebar-bottom {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding-top: 10px;
+            }
+
+            .student-page .sidebar-bottom .logout-button {
+                width: auto;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .student-page .sidebar-nav .nav-item {
+                padding: 9px 7px;
+            }
+
+            .student-page .student-main .dashboard-container {
+                width: 94%;
+            }
+        }
     </style>
 </head>
-<body>
-    <header class="dashboard-header">
-        <div>
-            <h1>Student Placement Portal</h1>
-            <p>Welcome, <span id="studentName">Student</span>!</p>
+
+<body class="student-page">
+
+<div class="student-layout">
+
+    <!-- STUDENT SIDEBAR -->
+    <aside class="student-sidebar">
+
+        <a class="brand" href="#studentOverview">
+            <span class="brand-icon">SP</span>
+            <span>
+                Placement Portal
+                <small>STUDENT WORKSPACE</small>
+            </span>
+        </a>
+
+        <p class="sidebar-label">MY WORKSPACE</p>
+
+        <nav class="sidebar-nav">
+            <a class="nav-item active" href="#studentOverview">
+                📊 <span>Dashboard</span>
+            </a>
+
+            <a class="nav-item" href="#studentJobsSection">
+                💼 <span>Available Jobs</span>
+            </a>
+
+            <a class="nav-item" href="#studentApplicationsSection">
+                📋 <span>My Applications</span>
+            </a>
+
+            <a class="nav-item" href="#studentProfileSection">
+                👤 <span>My Profile</span>
+            </a>
+
+            <a class="nav-item" href="#studentResumeSection">
+                📄 <span>My Resume</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="admin-identity">
+                <span class="avatar">S</span>
+                <span>
+                    <span id="sidebarStudentName">Student</span>
+                    <small>Student Account</small>
+                </span>
+            </div>
+
+            <button id="logoutButton"
+                    class="logout-button"
+                    type="button">
+                ↗ Logout
+            </button>
         </div>
-        <button id="logoutButton" type="button">Logout</button>
-    </header>
 
-    <main class="dashboard-container">
-        <h2>My Dashboard</h2>
+    </aside>
 
-        <section class="stats-grid">
-            <div class="stat-card">
-                <h3>Available Jobs</h3>
-                <p id="availableJobs">0</p>
+    <!-- MAIN CONTENT -->
+    <main class="student-main">
+
+        <header class="dashboard-header">
+            <div>
+                <p class="eyebrow">STUDENT WORKSPACE</p>
+                <h1>Student Placement Portal</h1>
+                <p>
+                    Welcome, <span id="studentName">Student</span>!
+                </p>
             </div>
-            <div class="stat-card">
-                <h3>My Applications</h3>
-                <p id="totalApplications">0</p>
-            </div>
-            <div class="stat-card">
-                <h3>Shortlisted</h3>
-                <p id="shortlistedApplications">0</p>
-            </div>
-            <div class="stat-card">
-                <h3>Selected</h3>
-                <p id="selectedApplications">0</p>
-            </div>
-        </section>
+        </header>
 
-        <section class="dashboard-section">
-            <h2>My Profile</h2>
+        <div class="dashboard-container">
 
-            <form id="profileForm">
-                <label for="phone">Phone</label>
-                <input id="phone" type="tel" placeholder="Enter phone number">
+            <h2 id="studentOverview">My Dashboard</h2>
 
-                <label for="course">Course</label>
-                <input id="course" type="text" placeholder="e.g. MCA">
+            <!-- STATISTICS -->
+            <section class="stats-grid">
 
-                <label for="graduationYear">Graduation Year</label>
-                <input id="graduationYear" type="number" placeholder="e.g. 2027">
+                <article class="stat-card">
+                    <h3>Available Jobs</h3>
+                    <p id="availableJobs">0</p>
+                </article>
 
-                <button type="submit">Save Profile</button>
-                <p id="profileMessage"></p>
-            </form>
-        </section>
+                <article class="stat-card">
+                    <h3>My Applications</h3>
+                    <p id="totalApplications">0</p>
+                </article>
 
-        <section class="dashboard-section">
-            <h2>Upload Resume (PDF)</h2>
+                <article class="stat-card">
+                    <h3>Shortlisted</h3>
+                    <p id="shortlistedApplications">0</p>
+                </article>
 
-            <form id="resumeForm">
-                <label for="resume">Select your resume (PDF, max 5 MB)</label>
-                <input
-                    id="resume"
-                    name="file"
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    required
-                >
+                <article class="stat-card">
+                    <h3>Selected</h3>
+                    <p id="selectedApplications">0</p>
+                </article>
 
-                <button type="submit">Upload Resume</button>
-                <p id="resumeMessage" role="status" aria-live="polite"></p>
-            </form>
-        </section>
+            </section>
 
-        <section class="dashboard-section">
-            <h2>Available Jobs</h2>
-            <p id="jobsMessage"></p>
-            <div id="jobsList"></div>
-        </section>
+            <!-- PROFILE -->
+            <section class="dashboard-section"
+                     id="studentProfileSection">
 
-        <section class="dashboard-section">
-            <h2>My Applications</h2>
-            <p id="applicationsMessage"></p>
+                <h2>My Profile</h2>
 
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Company</th>
-                            <th>Position</th>
-                            <th>Status</th>
-                            <th>Applied On</th>
-                        </tr>
-                    </thead>
-                    <tbody id="applicationsTable"></tbody>
-                </table>
-            </div>
-        </section>
+                <form id="profileForm">
+
+                    <label for="phone">Phone</label>
+                    <input id="phone"
+                           type="tel"
+                           placeholder="Enter phone number">
+
+                    <label for="course">Course</label>
+                    <input id="course"
+                           type="text"
+                           placeholder="e.g. MCA">
+
+                    <label for="graduationYear">Graduation Year</label>
+                    <input id="graduationYear"
+                           type="number"
+                           placeholder="e.g. 2027">
+
+                    <button type="submit">Save Profile</button>
+
+                    <p id="profileMessage" role="status"
+                       aria-live="polite"></p>
+
+                </form>
+            </section>
+
+            <!-- RESUME -->
+            <section class="dashboard-section"
+                     id="studentResumeSection">
+
+                <h2>Upload Resume (PDF)</h2>
+
+                <form id="resumeForm">
+
+                    <label for="resume">
+                        Select your resume (PDF, max 5 MB)
+                    </label>
+
+                    <input id="resume"
+                           name="file"
+                           type="file"
+                           accept=".pdf,application/pdf"
+                           required>
+
+                    <button type="submit">Upload Resume</button>
+
+                    <p id="resumeMessage"
+                       role="status"
+                       aria-live="polite"></p>
+
+                </form>
+            </section>
+
+            <!-- AVAILABLE JOBS -->
+            <section class="dashboard-section student-jobs-section"
+                     id="studentJobsSection">
+
+                <h2>Available Jobs</h2>
+
+                <p id="jobsMessage"
+                   role="status"
+                   aria-live="polite"></p>
+
+                <div class="jobs-toolbar">
+
+                    <input type="search"
+                           id="jobSearch"
+                           placeholder="Search by job title or company..."
+                           aria-label="Search jobs">
+
+                    <select id="jobLocationFilter"
+                            aria-label="Filter by location">
+                        <option value="">All Locations</option>
+                    </select>
+
+                    <select id="jobTypeFilter"
+                            aria-label="Filter by job type">
+                        <option value="">All Job Types</option>
+                    </select>
+
+                    <select id="jobsPerPage"
+                            aria-label="Jobs per page">
+                        <option value="5">5 jobs per page</option>
+                        <option value="10">10 jobs per page</option>
+                        <option value="25">25 jobs per page</option>
+                    </select>
+
+                    <button type="button" id="clearJobFilters">
+                        Clear Filters
+                    </button>
+
+                </div>
+
+                <p id="jobsResultCount" aria-live="polite"></p>
+
+                <div id="jobsList"></div>
+
+                <div id="jobsPagination"
+                     class="jobs-pagination"></div>
+
+            </section>
+
+            <!-- MY APPLICATIONS -->
+            <section class="dashboard-section"
+                     id="studentApplicationsSection">
+
+                <h2>My Applications</h2>
+
+                <p id="applicationsMessage"
+                   role="status"
+                   aria-live="polite"></p>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Position</th>
+                                <th>Status</th>
+                                <th>Applied On</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="applicationsTable"></tbody>
+                    </table>
+                </div>
+
+            </section>
+
+        </div>
     </main>
 
-    <script src="config.js"></script>
-    <script src="student.js"></script>
+</div>
+
+<script src="config.js"></script>
+<script src="student.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const container = document.querySelector(
+        ".student-main .dashboard-container"
+    );
+
+    if (!container) return;
+
+    const sections = Array.from(
+        container.querySelectorAll(":scope > .dashboard-section")
+    );
+
+    const navLinks = document.querySelectorAll(
+        ".student-sidebar .sidebar-nav .nav-item"
+    );
+
+    const heading = container.querySelector(":scope > h2");
+    const stats = container.querySelector(":scope > .stats-grid");
+
+    function showSection(targetId) {
+        const isHome = targetId === "studentOverview";
+
+        sections.forEach(function (section) {
+            section.classList.toggle(
+                "student-active-section",
+                section.id === targetId
+            );
+        });
+
+        container.classList.toggle("student-home", isHome);
+
+        if (heading) {
+            heading.style.display = isHome ? "block" : "none";
+        }
+
+        if (stats) {
+            stats.style.display = isHome ? "grid" : "none";
+        }
+
+        navLinks.forEach(function (link) {
+            link.classList.toggle(
+                "active",
+                link.getAttribute("href") === "#" + targetId
+            );
+        });
+    }
+
+    navLinks.forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            const targetId = link.getAttribute("href").slice(1);
+
+            if (
+                targetId !== "studentOverview" &&
+                !sections.some(section => section.id === targetId)
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            showSection(targetId);
+        });
+    });
+
+    showSection("studentOverview");
+});
+</script>
+
+</body>
+</html>
 </body>
 </html>

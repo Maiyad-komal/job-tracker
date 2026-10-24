@@ -187,7 +187,232 @@ if (resumeForm) {
     });
 }
 
-// Load available jobs
+/* ===== Available Jobs: Search, Filters & Pagination ===== */
+
+let allStudentJobs = [];
+let currentJobsPage = 1;
+
+const jobSearchInput = document.getElementById("jobSearch");
+const jobLocationFilter = document.getElementById("jobLocationFilter");
+const jobTypeFilter = document.getElementById("jobTypeFilter");
+const jobsPerPageSelect = document.getElementById("jobsPerPage");
+const clearJobFiltersButton = document.getElementById("clearJobFilters");
+const jobsResultCount = document.getElementById("jobsResultCount");
+const jobsPagination = document.getElementById("jobsPagination");
+
+function getJobTitle(job) {
+    return job.title || job.role || job.position || "Job";
+}
+
+function getCompanyName(job) {
+    return job.company_name || job.company || "Not specified";
+}
+
+function getJobLocation(job) {
+    return job.location || "";
+}
+
+function getJobType(job) {
+    return job.job_type || "";
+}
+
+function addFilterOptions(selectElement, values) {
+    if (!selectElement) return;
+
+    const previousValue = selectElement.value;
+    const firstOption = selectElement.options[0];
+
+    selectElement.replaceChildren();
+
+    if (firstOption) {
+        selectElement.appendChild(firstOption);
+    }
+
+    [...new Set(values.map(value => String(value).trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .forEach(value => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            selectElement.appendChild(option);
+        });
+
+    if ([...selectElement.options].some(option => option.value === previousValue)) {
+        selectElement.value = previousValue;
+    }
+}
+
+function populateJobFilters() {
+    addFilterOptions(
+        jobLocationFilter,
+        allStudentJobs.map(job => getJobLocation(job))
+    );
+
+    addFilterOptions(
+        jobTypeFilter,
+        allStudentJobs.map(job => getJobType(job))
+    );
+}
+
+function getFilteredJobs() {
+    const searchText = (jobSearchInput?.value || "")
+        .trim()
+        .toLowerCase();
+
+    const selectedLocation = jobLocationFilter?.value || "";
+    const selectedType = jobTypeFilter?.value || "";
+
+    return allStudentJobs.filter(job => {
+        const searchableText = [
+            getJobTitle(job),
+            getCompanyName(job),
+            job.description || ""
+        ].join(" ").toLowerCase();
+
+        const matchesSearch = searchableText.includes(searchText);
+
+        const matchesLocation =
+            !selectedLocation ||
+            getJobLocation(job) === selectedLocation;
+
+        const matchesType =
+            !selectedType ||
+            getJobType(job) === selectedType;
+
+        return matchesSearch && matchesLocation && matchesType;
+    });
+}
+
+function createJobDetail(label, value) {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = `${label}: ${value || "Not specified"}`;
+    return paragraph;
+}
+
+function renderJobs() {
+    if (!jobsList) return;
+
+    const filteredJobs = getFilteredJobs();
+    const perPage = Number(jobsPerPageSelect?.value) || 5;
+    const totalPages = Math.ceil(filteredJobs.length / perPage);
+
+    if (totalPages > 0 && currentJobsPage > totalPages) {
+        currentJobsPage = totalPages;
+    }
+
+    if (totalPages === 0) {
+        currentJobsPage = 1;
+    }
+
+    const startIndex = (currentJobsPage - 1) * perPage;
+    const visibleJobs = filteredJobs.slice(startIndex, startIndex + perPage);
+
+    jobsList.replaceChildren();
+
+    if (jobsResultCount) {
+        jobsResultCount.textContent =
+            `Showing ${filteredJobs.length === 0 ? 0 : startIndex + 1}` +
+            `–${startIndex + visibleJobs.length} of ${filteredJobs.length} jobs`;
+    }
+
+    if (filteredJobs.length === 0) {
+        jobsList.textContent = allStudentJobs.length === 0
+            ? "No jobs available right now."
+            : "No matching jobs found. Try changing your search or filters.";
+
+        if (jobsPagination) jobsPagination.replaceChildren();
+        return;
+    }
+
+    visibleJobs.forEach(job => {
+        const card = document.createElement("div");
+        card.className = "job-card";
+
+        const title = document.createElement("h3");
+        title.textContent = getJobTitle(job);
+
+        const company = createJobDetail("Company", getCompanyName(job));
+        const location = createJobDetail("Location", getJobLocation(job));
+        const jobType = createJobDetail("Job Type", getJobType(job));
+
+        card.append(title, company, location, jobType);
+
+        if (job.salary !== null && job.salary !== undefined && job.salary !== "") {
+            card.appendChild(createJobDetail("Salary", job.salary));
+        }
+
+        if (job.deadline) {
+            card.appendChild(
+                createJobDetail("Deadline", String(job.deadline).slice(0, 10))
+            );
+        }
+
+        if (job.description) {
+            card.appendChild(createJobDetail("Description", job.description));
+        }
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Apply Now";
+
+        button.addEventListener("click", function () {
+            if (job.id !== undefined && job.id !== null) {
+                applyForJob(job.id);
+            } else {
+                alert("Job ID is missing. Please contact the administrator.");
+            }
+        });
+
+        card.appendChild(button);
+        jobsList.appendChild(card);
+    });
+
+    renderJobsPagination(totalPages);
+}
+
+function renderJobsPagination(totalPages) {
+    if (!jobsPagination) return;
+
+    jobsPagination.replaceChildren();
+
+    if (totalPages <= 1) return;
+
+    function addPageButton(label, page, disabled = false, active = false) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.disabled = disabled;
+
+        if (active) button.classList.add("active");
+
+        if (active) button.setAttribute("aria-current", "page");
+
+        button.addEventListener("click", function () {
+            currentJobsPage = page;
+            renderJobs();
+        });
+
+        jobsPagination.appendChild(button);
+    }
+
+    addPageButton("Previous", currentJobsPage - 1, currentJobsPage === 1);
+
+    for (let page = 1; page <= totalPages; page++) {
+        addPageButton(
+            String(page),
+            page,
+            false,
+            page === currentJobsPage
+        );
+    }
+
+    addPageButton(
+        "Next",
+        currentJobsPage + 1,
+        currentJobsPage === totalPages
+    );
+}
+
 async function loadJobs() {
     if (!jobsList) return;
 
@@ -195,50 +420,58 @@ async function loadJobs() {
 
     try {
         const data = await apiRequest("/jobs");
-        const jobs = Array.isArray(data) ? data : (data.jobs || []);
+        allStudentJobs = Array.isArray(data) ? data : (data.jobs || []);
 
-        jobsList.innerHTML = "";
+        if (jobsMessage) jobsMessage.textContent = "";
 
-        if (jobs.length === 0) {
-            jobsList.textContent = "No jobs available right now.";
-            return;
-        }
-
-        jobs.forEach(function (job) {
-            const card = document.createElement("div");
-            card.className = "job-card";
-
-            const title = document.createElement("h3");
-            title.textContent =
-                job.title || job.role || job.position || "Job";
-
-            const company = document.createElement("p");
-            company.textContent =
-                "Company: " +
-                (job.company_name || job.company || "Not specified");
-
-            const description = document.createElement("p");
-            description.textContent =
-                job.description || job.location || "";
-
-            const button = document.createElement("button");
-            button.type = "button";
-            button.textContent = "Apply Now";
-
-            button.addEventListener("click", function () {
-                applyForJob(job.id);
-            });
-
-            card.append(title, company, description, button);
-            jobsList.appendChild(card);
-        });
+        populateJobFilters();
+        currentJobsPage = 1;
+        renderJobs();
     } catch (error) {
         jobsList.textContent = "";
+
+        if (jobsResultCount) jobsResultCount.textContent = "";
+        if (jobsPagination) jobsPagination.replaceChildren();
+
         showMessage(
             "jobsMessage",
             error.message || "Could not load jobs."
         );
     }
+}
+
+// Update results when the student changes a filter
+[jobSearchInput, jobLocationFilter, jobTypeFilter].forEach(element => {
+    if (!element) return;
+
+    element.addEventListener("input", function () {
+        currentJobsPage = 1;
+        renderJobs();
+    });
+
+    element.addEventListener("change", function () {
+        currentJobsPage = 1;
+        renderJobs();
+    });
+});
+
+if (jobsPerPageSelect) {
+    jobsPerPageSelect.addEventListener("change", function () {
+        currentJobsPage = 1;
+        renderJobs();
+    });
+}
+
+if (clearJobFiltersButton) {
+    clearJobFiltersButton.addEventListener("click", function () {
+        if (jobSearchInput) jobSearchInput.value = "";
+        if (jobLocationFilter) jobLocationFilter.value = "";
+        if (jobTypeFilter) jobTypeFilter.value = "";
+        if (jobsPerPageSelect) jobsPerPageSelect.value = "5";
+
+        currentJobsPage = 1;
+        renderJobs();
+    });
 }
 
 // Apply for job
